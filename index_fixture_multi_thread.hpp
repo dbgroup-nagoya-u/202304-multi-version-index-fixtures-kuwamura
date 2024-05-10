@@ -284,14 +284,15 @@ class IndexMultiThreadFixture : public testing::Test
   {
     VerifyWrite(!kWriteTwice, kSequential);
     epoch_manager_->ForwardGlobalEpoch();
-    auto &&guard = epoch_manager_->CreateEpochGuard();
+    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
 
     auto func_snapshot_read = [&]([[maybe_unused]] size_t _) -> void {
       const auto &target_ids = CreateTargetIDs(kExecNum);
       for (size_t i = kThreadNum /*Somehow, CreateTargetIDs(w_id,pattern) starts from 8*/;
            i < target_ids.size(); ++i) {
         const auto &key = keys_.at(i);
-        const auto read_val = index_->SnapshotRead(key, guard, GetLength(key));
+        const auto read_val =
+            index_->SnapshotRead(key, epoch_guard, protected_epochs, GetLength(key));
 
         const auto expected_val = payloads_.at(i % kThreadNum);
         const auto actual_val = read_val.value();
@@ -337,7 +338,7 @@ class IndexMultiThreadFixture : public testing::Test
       [[maybe_unused]] const bool is_update)
   {
     epoch_manager_->ForwardGlobalEpoch();
-    auto &&guard = epoch_manager_->CreateEpochGuard();
+    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
 
     if constexpr (HasScanOperation<ImplStat>()) {
       auto mt_worker = [&](const size_t w_id) -> void {
@@ -349,7 +350,7 @@ class IndexMultiThreadFixture : public testing::Test
         const auto &end_k = keys_.at(end_id);
         const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
-        auto &&iter = index_->Scan(guard, begin_key, end_key);
+        auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
         if (expect_success) {
           for (; iter; ++iter, ++begin_id) {
             const auto key_id = begin_id;
@@ -376,8 +377,13 @@ class IndexMultiThreadFixture : public testing::Test
   {
     VerifyWrite(!kWriteTwice, kSequential);
     epoch_manager_->ForwardGlobalEpoch();
-    const auto epoch_guard = epoch_manager_->CreateEpochGuard();
 
+    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
+    epoch_manager_->ForwardGlobalEpoch();
+    epoch_manager_->ForwardGlobalEpoch();
+    // Note: GetProtectedEpochs() returns the current epoch E, E-1, and protected epochs in
+    // descending order. Forwarding epoch 2 times makes sure that tail of the list is the oldest
+    // protected epoch.
     auto func_full_scan_op = [&]([[maybe_unused]] const size_t _) -> void {
       size_t begin_id = kThreadNum + kExecNum * 0;
       const auto &begin_k = keys_.at(begin_id);
@@ -387,7 +393,7 @@ class IndexMultiThreadFixture : public testing::Test
       const auto &end_k = keys_.at(end_id);
       const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
-      auto &&iter = index_->Scan(epoch_guard, begin_key, end_key);
+      auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
 
       for (; iter; ++iter, ++begin_id) {
         const auto key_id = begin_id;

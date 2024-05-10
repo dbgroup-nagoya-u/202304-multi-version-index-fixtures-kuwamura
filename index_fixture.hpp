@@ -205,18 +205,19 @@ class IndexFixture : public testing::Test
   )
   {
     const auto &target_ids = CreateTargetIDs(kExecNum, kSequential);
-
-    auto &&guard = epoch_manager_->CreateEpochGuard();
+    VerifyWrite(target_ids, !kWriteTwice);
     epoch_manager_->ForwardGlobalEpoch();
+    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
 
     VerifyWrite(target_ids, kWriteTwice);
 
     for (size_t i = 0; i < target_ids.size(); ++i) {
       const auto key_id = target_ids.at(i);
-      const auto pay_id = key_id;  // i.e., key_id, the value which is before updated
+      const auto pay_id = key_id;  // i.e., expect to read first writes.
 
       const auto &key = keys_.at(key_id);
-      const auto read_val = index_->SnapshotRead(key, guard, GetLength(key));
+      const auto read_val =
+          index_->SnapshotRead(key, epoch_guard, protected_epochs, GetLength(key));
 
       EXPECT_TRUE(read_val);
 
@@ -258,7 +259,7 @@ class IndexFixture : public testing::Test
       [[maybe_unused]] const bool write_twice = false)
   {
     epoch_manager_->ForwardGlobalEpoch();
-    auto &&guard = epoch_manager_->CreateEpochGuard();
+    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
 
     if constexpr (HasScanOperation<ImplStat>()) {
       ScanKey begin_key = std::nullopt;
@@ -279,7 +280,7 @@ class IndexFixture : public testing::Test
         end_pos = (end_closed) ? end_id + 1 : end_id;
       }
 
-      auto &&iter = index_->Scan(guard, begin_key, end_key);
+      auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
       if (expect_success) {
         for (; iter; ++iter, ++begin_pos) {
           const auto &[key, payload] = *iter;

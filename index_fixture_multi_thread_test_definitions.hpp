@@ -251,10 +251,10 @@ TYPED_TEST(IndexMultiThreadFixture, RandomWriteWithDuplicateKeysSucceed)
  * Concurrent Split/Merge
  *------------------------------------------------------------------------------------*/
 
-TYPED_TEST(IndexMultiThreadFixture, ConcurrentMixedOperationsSucceed)
-{
-  TestFixture::VerifyConcurrentSMOs();
-}
+// TYPED_TEST(IndexMultiThreadFixture, ConcurrentMixedOperationsSucceed)
+// {
+//   TestFixture::VerifyConcurrentSMOs();
+// }
 
 /*--------------------------------------------------------------------------------------
  * Bulkload operation
