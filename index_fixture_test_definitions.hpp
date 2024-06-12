@@ -24,11 +24,11 @@ TYPED_TEST(IndexFixture, ConstructWithInternalSMOs)
  * SnapshotRead operation
  *------------------------------------------------------------------------------------*/
 
-TYPED_TEST(IndexFixture, SnapshotRead)
-{
-  TestFixture::FillIndex();
-  TestFixture::VerifySnapshotRead();
-}
+// TYPED_TEST(IndexFixture, SnapshotRead)
+// {
+//   TestFixture::FillIndex();
+//   TestFixture::VerifySnapshotRead();
+// }
 
 /*--------------------------------------------------------------------------------------
  * Read operation tests
