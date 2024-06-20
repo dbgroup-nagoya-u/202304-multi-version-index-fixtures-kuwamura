@@ -65,7 +65,9 @@ class IndexFixture : public testing::Test
   static constexpr size_t kRecNumWithLeafSMOs = 1000;
   static constexpr size_t kRecNumWithInternalSMOs = 30000;
   static constexpr size_t kKeyNum = kExecNum + 2;
-
+  static constexpr size_t kDefaultGCTime = 10000;  // 10 ms
+  static constexpr size_t kDefaultGCThreadNum = 1;
+  static constexpr size_t kDefaultEpochIntervalMicro = 1000;  // 1 ms
   /*####################################################################################
    * Setup/Teardown
    *##################################################################################*/
@@ -78,7 +80,8 @@ class IndexFixture : public testing::Test
 
     auto epoch_manager = std::make_shared<EpochManager>();
     epoch_manager_ = epoch_manager;
-    index_ = std::make_unique<Index_t>(epoch_manager);
+    index_ = std::make_unique<Index_t>(kDefaultGCTime, kDefaultGCThreadNum, epoch_manager,
+                                       kDefaultEpochIntervalMicro);
   }
 
   void
