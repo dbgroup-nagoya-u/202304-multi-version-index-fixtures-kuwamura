@@ -35,6 +35,7 @@
 #include "gtest/gtest.h"
 
 // local sources
+#include "b_tree/component/version_table.hpp"
 #include "common.hpp"
 
 namespace dbgroup::index::test
@@ -60,6 +61,8 @@ class IndexMultiThreadFixture : public testing::Test
   using ScanKey = std::optional<std::tuple<const Key &, size_t, bool>>;
 
   using EpochManager = ::dbgroup::memory::EpochManager;
+  template <class T>
+  using VersionTable = ::dbgroup::index::b_tree::component::VersionTable<T>;
 
  protected:
   /*####################################################################################
@@ -116,12 +119,17 @@ class IndexMultiThreadFixture : public testing::Test
   auto
   Write(  //
       [[maybe_unused]] const size_t key_id,
-      [[maybe_unused]] const size_t pay_id)
+      [[maybe_unused]] const size_t pay_id,
+      VersionTable<Payload> *&version_table)
   {
     if constexpr (HasWriteOperation<ImplStat>()) {
       const auto &key = keys_.at(key_id);
       const auto &payload = payloads_.at(pay_id);
-      return index_->Write(key, payload, GetLength(key), GetLength(payload));
+      auto rc = index_->Write(key, payload, version_table, GetLength(key), GetLength(payload));
+      if (version_table->IsFilled()) {
+        version_table = index_->GetNewVersionTable();
+      }
+      return rc;
     } else {
       return 0;
     }
@@ -412,8 +420,9 @@ class IndexMultiThreadFixture : public testing::Test
     switch (write_ops) {
       case kWrite:
         func_write_op = [&](const size_t w_id) -> void {
+          auto version_table = index_->GetNewVersionTable();
           for (const auto id : CreateTargetIDs(w_id, pattern)) {
-            const auto rc = Write(id, w_id + kThreadNum);
+            const auto rc = Write(id, w_id + kThreadNum, version_table);
             EXPECT_EQ(rc, 0);
           }
         };
@@ -451,8 +460,9 @@ class IndexMultiThreadFixture : public testing::Test
       const AccessPattern pattern)
   {
     auto mt_worker = [&](const size_t w_id) -> void {
+      auto version_table = index_->GetNewVersionTable();
       for (const auto id : CreateTargetIDs(w_id, pattern)) {
-        const auto rc = Write(id, (is_update) ? w_id + kThreadNum : w_id);
+        const auto rc = Write(id, (is_update) ? w_id + kThreadNum : w_id, version_table);
         EXPECT_EQ(rc, 0);
       }
     };

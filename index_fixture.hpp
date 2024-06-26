@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 // local sources
+#include "b_tree/component/version_table.hpp"
 #include "common.hpp"
 
 namespace dbgroup::index::test
@@ -55,6 +56,8 @@ class IndexFixture : public testing::Test
   using ScanKeyRef = std::optional<std::pair<size_t, bool>>;
 
   using EpochManager = ::dbgroup::memory::EpochManager;
+  template <class T>
+  using VersionTable = ::dbgroup::index::b_tree::component::VersionTable<T>;
 
  protected:
   /*####################################################################################
@@ -143,7 +146,26 @@ class IndexFixture : public testing::Test
     if constexpr (HasWriteOperation<ImplStat>()) {
       const auto &key = keys_.at(key_id);
       const auto &payload = payloads_.at(pay_id);
-      return index_->Write(key, payload, GetLength(key), GetLength(payload));
+      return index_->Write(key, payload, nullptr, GetLength(key), GetLength(payload));
+    } else {
+      return 0;
+    }
+  }
+
+  auto
+  Write(  //
+      [[maybe_unused]] const size_t key_id,
+      [[maybe_unused]] const size_t pay_id,
+      VersionTable<Payload> *&version_table)
+  {
+    if constexpr (HasWriteOperation<ImplStat>()) {
+      const auto &key = keys_.at(key_id);
+      const auto &payload = payloads_.at(pay_id);
+      auto rc = index_->Write(key, payload, version_table, GetLength(key), GetLength(payload));
+      if (version_table && version_table->IsFilled()) {
+        version_table = index_->GetNewVersionTable();
+      }
+      return rc;
     } else {
       return 0;
     }
@@ -304,11 +326,12 @@ class IndexFixture : public testing::Test
       const std::vector<size_t> &target_ids,
       const bool write_twice = false)
   {
+    auto *version_table = index_->GetNewVersionTable();
+
     for (size_t i = 0; i < target_ids.size(); ++i) {
       const auto key_id = target_ids.at(i);
       const auto pay_id = (write_twice) ? key_id + 1 : key_id;
-
-      const auto rc = Write(key_id, pay_id);
+      const auto rc = Write(key_id, pay_id, version_table);
       EXPECT_EQ(rc, 0);
     }
   }
