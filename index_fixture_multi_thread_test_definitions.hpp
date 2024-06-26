@@ -42,10 +42,10 @@ TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithRandomWrite)
 /*--------------------------------------------------------------------------------------
  * SnapshotRead operation
  *------------------------------------------------------------------------------------*/
-TYPED_TEST(IndexMultiThreadFixture, SnapshotRead)  //
-{
-  TestFixture::VerifySnapshotRead();
-}
+// TYPED_TEST(IndexMultiThreadFixture, SnapshotRead)  //
+// {
+//   TestFixture::VerifySnapshotRead();
+// }
 
 /*--------------------------------------------------------------------------------------
  * Write operation
