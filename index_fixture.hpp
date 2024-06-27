@@ -29,7 +29,7 @@
 #include "gtest/gtest.h"
 
 // local sources
-#include "b_tree/component/version_table.hpp"
+#include "b_tree/component/heap_table.hpp"
 #include "common.hpp"
 
 namespace dbgroup::index::test
@@ -57,7 +57,7 @@ class IndexFixture : public testing::Test
 
   using EpochManager = ::dbgroup::memory::EpochManager;
 
-  using VersionTable = ::dbgroup::index::b_tree::component::VersionTable;
+  using HeapTable = ::dbgroup::index::b_tree::component::HeapTable;
 
  protected:
   /*####################################################################################
@@ -156,14 +156,14 @@ class IndexFixture : public testing::Test
   Write(  //
       [[maybe_unused]] const size_t key_id,
       [[maybe_unused]] const size_t pay_id,
-      VersionTable *&version_table)
+      HeapTable *&heap_table)
   {
     if constexpr (HasWriteOperation<ImplStat>()) {
       const auto &key = keys_.at(key_id);
       const auto &payload = payloads_.at(pay_id);
-      auto rc = index_->Write(key, payload, version_table, GetLength(key), GetLength(payload));
-      if (version_table && version_table->IsFilled()) {
-        version_table = index_->GetNewVersionTable();
+      auto rc = index_->Write(key, payload, heap_table, GetLength(key), GetLength(payload));
+      if (heap_table && heap_table->IsFilled()) {
+        heap_table = index_->GetNewHeapTable();
       }
       return rc;
     } else {
@@ -326,12 +326,12 @@ class IndexFixture : public testing::Test
       const std::vector<size_t> &target_ids,
       const bool write_twice = false)
   {
-    auto *version_table = index_->GetNewVersionTable();
+    auto *heap_table = index_->GetNewHeapTable();
 
     for (size_t i = 0; i < target_ids.size(); ++i) {
       const auto key_id = target_ids.at(i);
       const auto pay_id = (write_twice) ? key_id + 1 : key_id;
-      const auto rc = Write(key_id, pay_id, version_table);
+      const auto rc = Write(key_id, pay_id, heap_table);
       EXPECT_EQ(rc, 0);
     }
   }
