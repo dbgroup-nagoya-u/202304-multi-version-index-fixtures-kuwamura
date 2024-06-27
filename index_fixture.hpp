@@ -56,8 +56,8 @@ class IndexFixture : public testing::Test
   using ScanKeyRef = std::optional<std::pair<size_t, bool>>;
 
   using EpochManager = ::dbgroup::memory::EpochManager;
-  template <class T>
-  using VersionTable = ::dbgroup::index::b_tree::component::VersionTable<T>;
+
+  using VersionTable = ::dbgroup::index::b_tree::component::VersionTable;
 
  protected:
   /*####################################################################################
@@ -156,7 +156,7 @@ class IndexFixture : public testing::Test
   Write(  //
       [[maybe_unused]] const size_t key_id,
       [[maybe_unused]] const size_t pay_id,
-      VersionTable<Payload> *&version_table)
+      VersionTable *&version_table)
   {
     if constexpr (HasWriteOperation<ImplStat>()) {
       const auto &key = keys_.at(key_id);
