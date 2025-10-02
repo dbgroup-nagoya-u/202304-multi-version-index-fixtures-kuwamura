@@ -14,18 +14,18 @@ TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithRandomWrite)
 {
   TestFixture::VerifySnapshotScanWith(kWrite, kRandom);
 }
-// TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithSequentialUpdate)
-// {
-//   TestFixture::VerifySnapshotScanWith(kUpdate, kSequential);
-// }
-// TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithReverseUpdate)
-// {
-//   TestFixture::VerifySnapshotScanWith(kUpdate, kReverse);
-// }
-// TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithRandomUpdate)
-// {
-//   TestFixture::VerifySnapshotScanWith(kUpdate, kRandom);
-// }
+TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithSequentialUpdate)
+{
+  TestFixture::VerifySnapshotScanWith(kUpdate, kSequential);
+}
+TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithReverseUpdate)
+{
+  TestFixture::VerifySnapshotScanWith(kUpdate, kReverse);
+}
+TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithRandomUpdate)
+{
+  TestFixture::VerifySnapshotScanWith(kUpdate, kRandom);
+}
 // TYPED_TEST(IndexMultiThreadFixture, SnapshotScanWithSequentialDelete)
 // {
 //   TestFixture::VerifySnapshotScanWith(kDelete, kSequential);
