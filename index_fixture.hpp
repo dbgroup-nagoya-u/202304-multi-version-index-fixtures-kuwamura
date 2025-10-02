@@ -54,7 +54,7 @@ class IndexFixture : public testing::Test
   using ScanKey = std::optional<std::tuple<const Key &, size_t, bool>>;
   using ScanKeyRef = std::optional<std::pair<size_t, bool>>;
 
-  using EpochManager = ::dbgroup::thread::EpochManager;
+  using EpochManager = ::dbgroup::memory::EpochManager;
 
  protected:
   /*####################################################################################

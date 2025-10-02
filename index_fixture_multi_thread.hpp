@@ -59,7 +59,7 @@ class IndexMultiThreadFixture : public testing::Test
   using ImplStat = typename IndexInfo::ImplStatus;
   using ScanKey = std::optional<std::tuple<const Key &, size_t, bool>>;
 
-  using EpochManager = ::dbgroup::thread::EpochManager;
+  using EpochManager = ::dbgroup::memory::EpochManager;
 
  protected:
   /*####################################################################################
