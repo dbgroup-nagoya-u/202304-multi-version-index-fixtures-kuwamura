@@ -385,6 +385,7 @@ class IndexMultiThreadFixture : public testing::Test
     // Note: GetProtectedEpochs() returns the current epoch E, E-1, and protected epochs in
     // descending order. Forwarding epoch 2 times makes sure that tail of the list is the oldest
     // protected epoch.
+    std::atomic_uint scan_ready_cnt{0};
     auto func_full_scan_op = [&]([[maybe_unused]] const size_t _) -> void {
       size_t begin_id = kThreadNum + kExecNum * 0;
       const auto &begin_k = keys_.at(begin_id);
@@ -395,6 +396,8 @@ class IndexMultiThreadFixture : public testing::Test
       const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
       auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
+
+      scan_ready_cnt.fetch_add(1);
 
       for (; iter; ++iter, ++begin_id) {
         const auto key_id = begin_id;
@@ -412,6 +415,9 @@ class IndexMultiThreadFixture : public testing::Test
       case kWrite:
         func_write_op = [&](const size_t w_id) -> void {
           for (const auto id : CreateTargetIDs(w_id, pattern)) {
+            while (scan_ready_cnt.load() < kThreadNum / 2) {
+              std::this_thread::sleep_for(std::chrono::microseconds{1});
+            }
             const auto rc = Write(id, w_id + kThreadNum);
             EXPECT_EQ(rc, 0);
           }
@@ -423,6 +429,9 @@ class IndexMultiThreadFixture : public testing::Test
       case kUpdate:
         func_write_op = [&](const size_t w_id) -> void {
           for (const auto id : CreateTargetIDs(w_id, pattern)) {
+            while (scan_ready_cnt.load() < kThreadNum / 2) {
+              std::this_thread::sleep_for(std::chrono::microseconds{1});
+            }
             const auto rc = Update(id, w_id + kThreadNum);
             EXPECT_EQ(rc, 0);
           }
@@ -431,6 +440,9 @@ class IndexMultiThreadFixture : public testing::Test
       case kDelete:
         func_write_op = [&](const size_t w_id) -> void {
           for (const auto id : CreateTargetIDs(w_id, pattern)) {
+            while (scan_ready_cnt.load() < kThreadNum / 2) {
+              std::this_thread::sleep_for(std::chrono::microseconds{1});
+            }
             const auto rc = Delete(id);
             EXPECT_EQ(rc, 0);
           }
