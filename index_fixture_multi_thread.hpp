@@ -254,15 +254,16 @@ class IndexMultiThreadFixture : public testing::Test
   }
 
   void
-  RunMTMultiOperation(
-      const std::function<void(size_t)> &func_single,  // one thread runs func_single
-      const std::function<void(size_t)> &func_multi)   // and the others run func_multi
+  RunMTMultiOperation(const std::function<void(size_t)> &func_a,  //
+                      const std::function<void(size_t)> &func_b)  //
   {
     std::vector<std::thread> threads{};
-    for (size_t i = 0; i < kThreadNum - 1; ++i) {
-      threads.emplace_back(func_multi, i);
+    for (size_t i = 0; i < kThreadNum / 2; ++i) {
+      threads.emplace_back(func_a, i);
     }
-    threads.emplace_back(func_single, kThreadNum - 1);
+    for (size_t i = kThreadNum / 2; i < kThreadNum; ++i) {
+      threads.emplace_back(func_b, i);
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds{kWaitForThreadCreation});
     std::lock_guard guard{s_mtx_};
 
