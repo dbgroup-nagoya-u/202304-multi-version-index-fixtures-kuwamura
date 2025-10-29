@@ -75,10 +75,7 @@ class IndexFixture : public testing::Test
   {
     keys_ = PrepareTestData<Key>(kKeyNum);
     payloads_ = PrepareTestData<Payload>(kKeyNum);
-
-    auto epoch_manager = std::make_shared<EpochManager>();
-    epoch_manager_ = epoch_manager;
-    index_ = std::make_unique<Index_t>(epoch_manager);
+    index_ = std::make_unique<Index_t>();
   }
 
   void
@@ -206,8 +203,6 @@ class IndexFixture : public testing::Test
   {
     const auto &target_ids = CreateTargetIDs(kExecNum, kSequential);
     VerifyWrite(target_ids, !kWriteTwice);
-    epoch_manager_->ForwardGlobalEpoch();
-    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
 
     VerifyWrite(target_ids, kWriteTwice);
 
@@ -216,8 +211,7 @@ class IndexFixture : public testing::Test
       const auto pay_id = key_id;  // i.e., expect to read first writes.
 
       const auto &key = keys_.at(key_id);
-      const auto read_val =
-          index_->SnapshotRead(key, epoch_guard, protected_epochs, GetLength(key));
+      const auto read_val = index_->SnapshotRead(key, GetLength(key));
 
       EXPECT_TRUE(read_val);
 
@@ -258,9 +252,6 @@ class IndexFixture : public testing::Test
       [[maybe_unused]] const bool expect_success = true,
       [[maybe_unused]] const bool write_twice = false)
   {
-    epoch_manager_->ForwardGlobalEpoch();
-    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
-
     if constexpr (HasScanOperation<ImplStat>()) {
       ScanKey begin_key = std::nullopt;
       size_t begin_pos = 0;
@@ -280,7 +271,7 @@ class IndexFixture : public testing::Test
         end_pos = (end_closed) ? end_id + 1 : end_id;
       }
 
-      auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
+      auto &&iter = index_->Scan(begin_key, end_key);
       if (expect_success) {
         for (; iter; ++iter, ++begin_pos) {
           const auto &[key, payload] = *iter;
@@ -607,9 +598,6 @@ class IndexFixture : public testing::Test
 
   /// an index for testing
   std::unique_ptr<Index_t> index_{nullptr};
-
-  // an epoch manager for multi-version
-  std::shared_ptr<EpochManager> epoch_manager_{nullptr};
 };
 
 }  // namespace dbgroup::index::test

@@ -69,7 +69,6 @@ class IndexMultiThreadFixture : public testing::Test
   static constexpr size_t kThreadNum = DBGROUP_TEST_THREAD_NUM;
   static constexpr size_t kKeyNum = (kExecNum + 2) * kThreadNum;
   static constexpr size_t kWaitForThreadCreation = 100;
-  static constexpr size_t kEpochIntervalMicro = 1000;
 
   /*####################################################################################
    * Setup/Teardown
@@ -81,9 +80,7 @@ class IndexMultiThreadFixture : public testing::Test
     keys_ = PrepareTestData<Key>(kKeyNum);
     payloads_ = PrepareTestData<Payload>(kKeyNum);
 
-    auto epoch_manager = std::make_shared<EpochManager>();
-    epoch_manager_ = epoch_manager;
-    index_ = std::make_unique<Index_t>(epoch_manager, kEpochIntervalMicro);
+    index_ = std::make_unique<Index_t>();
     is_ready_ = false;
   }
 
@@ -284,16 +281,12 @@ class IndexMultiThreadFixture : public testing::Test
   )
   {
     VerifyWrite(!kWriteTwice, kSequential);
-    epoch_manager_->ForwardGlobalEpoch();
-    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
-
     auto func_snapshot_read = [&]([[maybe_unused]] size_t _) -> void {
       const auto &target_ids = CreateTargetIDs(kExecNum);
       for (size_t i = kThreadNum /*Somehow, CreateTargetIDs(w_id,pattern) starts from 8*/;
            i < target_ids.size(); ++i) {
         const auto &key = keys_.at(i);
-        const auto read_val =
-            index_->SnapshotRead(key, epoch_guard, protected_epochs, GetLength(key));
+        const auto read_val = index_->SnapshotRead(key, GetLength(key));
 
         const auto expected_val = payloads_.at(i % kThreadNum);
         const auto actual_val = read_val.value();
@@ -338,9 +331,6 @@ class IndexMultiThreadFixture : public testing::Test
       [[maybe_unused]] const bool expect_success,
       [[maybe_unused]] const bool is_update)
   {
-    epoch_manager_->ForwardGlobalEpoch();
-    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
-
     if constexpr (HasScanOperation<ImplStat>()) {
       auto mt_worker = [&](const size_t w_id) -> void {
         size_t begin_id = kThreadNum + kExecNum * w_id;
@@ -351,7 +341,7 @@ class IndexMultiThreadFixture : public testing::Test
         const auto &end_k = keys_.at(end_id);
         const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
-        auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
+        auto &&iter = index_->Scan(begin_key, end_key);
         if (expect_success) {
           for (; iter; ++iter, ++begin_id) {
             const auto key_id = begin_id;
@@ -377,14 +367,6 @@ class IndexMultiThreadFixture : public testing::Test
       const AccessPattern pattern)
   {
     VerifyWrite(!kWriteTwice, kSequential);
-    epoch_manager_->ForwardGlobalEpoch();
-
-    const auto &[epoch_guard, protected_epochs] = epoch_manager_->GetProtectedEpochs();
-    epoch_manager_->ForwardGlobalEpoch();
-    epoch_manager_->ForwardGlobalEpoch();
-    // Note: GetProtectedEpochs() returns the current epoch E, E-1, and protected epochs in
-    // descending order. Forwarding epoch 2 times makes sure that tail of the list is the oldest
-    // protected epoch.
     std::atomic_uint scan_ready_cnt{0};
     auto func_full_scan_op = [&]([[maybe_unused]] const size_t _) -> void {
       size_t begin_id = kThreadNum + kExecNum * 0;
@@ -395,7 +377,7 @@ class IndexMultiThreadFixture : public testing::Test
       const auto &end_k = keys_.at(end_id);
       const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
-      auto &&iter = index_->Scan(epoch_guard, protected_epochs, begin_key, end_key);
+      auto &&iter = index_->Scan(begin_key, end_key);
 
       scan_ready_cnt.fetch_add(1);
 
@@ -690,9 +672,6 @@ class IndexMultiThreadFixture : public testing::Test
     };
 
     auto scan_proc = [&]() -> void {
-      epoch_manager_->ForwardGlobalEpoch();
-      auto &&guard = epoch_manager_->CreateEpochGuard();
-
       Key prev_key{};
       if constexpr (IsVarLen<Key>()) {
         prev_key = reinterpret_cast<Key>(::operator new(kVarDataLength));
@@ -703,7 +682,7 @@ class IndexMultiThreadFixture : public testing::Test
         } else {
           prev_key = keys_.at(0);
         }
-        for (auto &&iter = index_->Scan(guard); iter; ++iter) {
+        for (auto &&iter = index_->Scan(); iter; ++iter) {
           const auto &[key, payload] = *iter;
           EXPECT_TRUE(KeyComp{}(prev_key, key));
           if constexpr (IsVarLen<Key>()) {
@@ -843,9 +822,6 @@ class IndexMultiThreadFixture : public testing::Test
 
   /// a condition variable for notifying worker threads.
   std::condition_variable cond_{};
-
-  // an epoch manager for multi-version
-  std::shared_ptr<EpochManager> epoch_manager_{nullptr};
 };
 
 }  // namespace dbgroup::index::test
