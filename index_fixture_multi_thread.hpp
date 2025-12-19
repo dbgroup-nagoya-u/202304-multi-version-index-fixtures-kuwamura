@@ -341,7 +341,7 @@ class IndexMultiThreadFixture : public testing::Test
         const auto &end_k = keys_.at(end_id);
         const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
-        auto &&iter = index_->Scan(begin_key, end_key);
+        auto &&iter = index_->Scan(0, begin_key, end_key);
         if (expect_success) {
           for (; iter; ++iter, ++begin_id) {
             const auto key_id = begin_id;
@@ -377,7 +377,7 @@ class IndexMultiThreadFixture : public testing::Test
       const auto &end_k = keys_.at(end_id);
       const auto &end_key = std::make_tuple(end_k, GetLength(end_k), kRangeOpened);
 
-      auto &&iter = index_->Scan(begin_key, end_key);
+      auto &&iter = index_->Scan(100, begin_key, end_key);
 
       scan_ready_cnt.fetch_add(1);
 

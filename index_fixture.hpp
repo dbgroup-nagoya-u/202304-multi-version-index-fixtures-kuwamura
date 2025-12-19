@@ -271,7 +271,7 @@ class IndexFixture : public testing::Test
         end_pos = (end_closed) ? end_id + 1 : end_id;
       }
 
-      auto &&iter = index_->Scan(begin_key, end_key);
+      auto &&iter = index_->Scan(0, begin_key, end_key);
       if (expect_success) {
         for (; iter; ++iter, ++begin_pos) {
           const auto &[key, payload] = *iter;
